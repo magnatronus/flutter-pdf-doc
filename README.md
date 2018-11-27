@@ -17,6 +17,7 @@ Currently you can specify:
 * Font style
 * Font size
 * Font color
+* An optional page header
 
 To use **ReportDocument** just take a look at how it is used in this demo app. 
 
@@ -25,7 +26,7 @@ To use **ReportDocument** just take a look at how it is used in this demo app.
 The TTF font(s) should be added as an asset in the same way that any custom fint should be with Flutter (see the pubspec.yaml for details)
 
 ## Currently Planned Updates
-* automatic Page Headers and Footers
+* automatic Page  Footers
 * page numbering
 
 

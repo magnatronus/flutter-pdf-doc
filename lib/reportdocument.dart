@@ -101,6 +101,7 @@ class _DocumentMargin {
 /// Reports that are generated with [saveAsFile] are stored in the [getApplicationDocumentsDirectory] and a subdirectory
 /// defined by the optional [storageDirectory] which by default wll be set to 'reports'.
 class ReportDocument {
+
   final PDFPageFormat paper;
   final String storageDirectory;
   final _Cursor _cursor;
@@ -112,6 +113,8 @@ class ReportDocument {
   double _lineSpacing = PDFPageFormat.mm;
   Map<String, PDFTTFFont> _fonts = Map();
   Color _currentColor;
+  Map _header;
+
 
   ReportDocument(
       {@required this.paper,
@@ -121,21 +124,6 @@ class ReportDocument {
         _report = PDFDocument(deflate: zlib.encode),
         _cursor = _Cursor(paper.dimension.h, paper.dimension.w);
 
-  /// Create and/or access the directory to store any generated documents
-  _getStorageDirectory() async {
-    var directory = await getApplicationDocumentsDirectory();
-    Directory("${directory.path}/$storageDirectory").createSync();
-    return "${directory.path}/$storageDirectory";
-  }
-
-  /// Load the document with a TTF
-  _loadTTFFont(String fontfile) async {
-    if (!_fonts.containsKey(fontfile)) {
-      ByteData fontBytes = await rootBundle.load(fontfile);
-      _fonts[fontfile] = PDFTTFFont(_report, fontBytes);
-    }
-    return _fonts[fontfile];
-  }
 
   /// Add a new blank page to the PDF and reset the cursor
   createNewPage() {
@@ -144,27 +132,12 @@ class ReportDocument {
     _cursor.margin = _margin;
     _cursor.reset();
     _cursor.printBounds();
-  }
-
-  /// This will print out the string specified in [line] using the current cursor position
-  /// If the line will not fit on the page it will first create a new page
-  _printLine(line, font, size) {
-    var lb = font.stringBounds(line);
-    double yshim = (lb.h - lb.y) * size;
-
-    // check if line will print on the page - if not create a new page
-    if ((_cursor.y - yshim) < _cursor.maxy) {
-      createNewPage();
-    } else {
-      _cursor.move(0.0, yshim);
+    if(_header != null){
+      _printHeader();
     }
-
-    // add line to page
-    _currentPage.getGraphics().setColor(PDFColor.fromInt(_currentColor.value));
-    _currentPage
-        .getGraphics()
-        .drawString(font, size, line, _cursor.x, _cursor.y);
   }
+
+
 
   /// set the current color to use where it is not specifically defined
   /// where [color] is the required [Color]
@@ -183,9 +156,19 @@ class ReportDocument {
     _currentFont = await _loadTTFFont(font);
   }
 
+  /// A simple header that will be automatically added as the first text everytime a new page is generated
+  addHeader(text, {@required double size, String font}){
+    _header = {
+      "text": text,
+      "size": size,
+      "font": font
+    };
+  }
+
   /// Add the specified text to the current page using the currently set font [setTTFont] and the specified [size]
+  /// optionally a different [font] from the current default may be specified
   /// if [paragraph] is set (it is set to true by defaul) then space is printed before  text.
-  addText(String text, {bool paragraph: true, double size}) {
+  addText(String text, {bool paragraph: true, @required double size, String font}) {
     // Check we have a true type font installed and set  - if not this needs doing first
     if (_currentFont == null) {
       throw Exception(
@@ -196,6 +179,10 @@ class ReportDocument {
     if (paragraph) {
       _cursor.newParagraph();
     }
+
+    // what font will be used
+    PDFTTFFont textFont = (font==null)?_currentFont:_loadTTFFont(font);
+
 
     /// Now build up lines from the words in the passed [text]
     /// If adding a word exceeds the print margins print the line and start a new one
@@ -208,7 +195,7 @@ class ReportDocument {
         var lb = _currentFont.stringBounds(line + " $w");
         double lw = (lb.w * size) + lb.x;
         if (lw > _cursor.printWidth) {
-          _printLine(line, _currentFont, size);
+          _printLine(line, textFont, size);
           line = w;
         } else {
           line += ' $w';
@@ -218,7 +205,7 @@ class ReportDocument {
 
     // print whats left of our text
     if (line.length > 0) {
-      _printLine(line, _currentFont, size);
+      _printLine(line, textFont, size);
       _cursor.newLine();
     }
   }
@@ -236,4 +223,51 @@ class ReportDocument {
     file.writeAsBytesSync(_report.save());
     return fileName;
   }
+
+
+  /// Create and/or access the directory to store any generated documents
+  _getStorageDirectory() async {
+    var directory = await getApplicationDocumentsDirectory();
+    Directory("${directory.path}/$storageDirectory").createSync();
+    return "${directory.path}/$storageDirectory";
+  }
+
+  /// Load the document with a TTF
+  _loadTTFFont(String fontfile) async {
+    if (!_fonts.containsKey(fontfile)) {
+      ByteData fontBytes = await rootBundle.load(fontfile);
+      _fonts[fontfile] = PDFTTFFont(_report, fontBytes);
+    }
+    return _fonts[fontfile];
+  }  
+
+
+  /// Add a header to the page
+  _printHeader(){
+    addText(_header['text'], 
+      font: _header['font'], 
+      size: _header['size']);
+    _cursor.newParagraph();    
+  }
+
+  /// This will print out the string specified in [line] using the current cursor position
+  /// If the line will not fit on the page it will first create a new page
+  _printLine(line, font, size) {
+    var lb = font.stringBounds(line);
+    double yshim = (lb.h - lb.y) * size;
+
+    // Make sure we used the correct color
+    _currentPage.getGraphics().setColor(PDFColor.fromInt(_currentColor.value));
+
+    // check if line will print on the page - if not create a new page
+    if ((_cursor.y - yshim) < _cursor.maxy) {
+      createNewPage();
+    }
+    
+    // add line to page
+    _cursor.move(0.0, yshim);
+    _currentPage
+        .getGraphics()
+        .drawString(font, size, line, _cursor.x, _cursor.y);
+  }  
 }

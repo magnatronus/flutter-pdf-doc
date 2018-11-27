@@ -27,11 +27,17 @@ class PDFDemo extends StatelessWidget {
   generateTestPDF(BuildContext context) async {
     // create a blank pdf doc
     ReportDocument pdf = ReportDocument(
-      paper: PDFPageFormat.a4.landscape,
+      paper: PDFPageFormat.a4,
     );
 
     // set our default font (we MUST wait for the font to load!)
     await pdf.setTTFont("fonts/GeosansLight.ttf");
+
+    // Add a header
+    pdf.addHeader(
+      "PDF Report",
+      size: 28.0,
+    );
 
     // create the first page
     pdf.createNewPage();

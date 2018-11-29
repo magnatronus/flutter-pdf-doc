@@ -1,5 +1,12 @@
 # pdfdev
 
+**Please Note: This project is now being developed as a Flutter Package and can be found using the link below**
+
+- [PDFReporter](https://github.com/magnatronus/flutter-pdfreporter)
+
+ 
+
+
 A Flutter app used to test a wrapper around the [pdf plugin](https://pub.dartlang.org/packages/pdf).
 
 This app is a very simple WIP demo that will create an A4 landscape PDF and generate text in various sizes and colors that will line and page wrap as required.
